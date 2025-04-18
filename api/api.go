@@ -15,7 +15,7 @@ import (
 func jsonValidator[A any, R any](
 	session *sql.DB, endpoint func(*sql.DB, A) (R, error),
 ) func(http.ResponseWriter, *http.Request) error {
-	validate := validator.New()
+	validate := validator.New(validator.WithRequiredStructEnabled())
 	return func(w http.ResponseWriter, r *http.Request) error {
 		var args A
 		body, err := io.ReadAll(r.Body)
