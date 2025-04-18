@@ -1,8 +1,10 @@
 package base
 
 import (
+	"database/sql"
 	"encoding/json"
 	"io"
+	"log"
 	"net/http"
 
 	"github.com/go-playground/validator/v10"
@@ -10,7 +12,7 @@ import (
 )
 
 func jsonValidator[A any, R any](
-	endpoint func(A) (R, error),
+	session *sql.DB, endpoint func(*sql.DB, A) (R, error),
 ) func(http.ResponseWriter, *http.Request) error {
 	validate := validator.New()
 	return func(w http.ResponseWriter, r *http.Request) error {
@@ -25,7 +27,7 @@ func jsonValidator[A any, R any](
 		if err := validate.Struct(args); err != nil {
 			return errors.APIErrorBadRequest("Invalid arguments")
 		}
-		response, err := endpoint(args)
+		response, err := endpoint(session, args)
 		if err != nil {
 			return err
 		}
@@ -49,6 +51,7 @@ func jsonValidator[A any, R any](
 func errorHandler(endpoint func(http.ResponseWriter, *http.Request) error) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if err := endpoint(w, r); err != nil {
+			log.Println(err)
 			var error errors.APIError
 			if re, ok := err.(errors.APIError); ok {
 				error = re
@@ -63,6 +66,10 @@ func errorHandler(endpoint func(http.ResponseWriter, *http.Request) error) http.
 	})
 }
 
-func RegisterRoute[A any, R any](path string, endpoint func(A) (R, error)) {
-	http.Handle(path, errorHandler(jsonValidator(endpoint)))
+func RegisterRoute[A any, R any](
+	path string,
+	session *sql.DB,
+	endpoint func(*sql.DB, A) (R, error),
+) {
+	http.Handle(path, errorHandler(jsonValidator(session, endpoint)))
 }
