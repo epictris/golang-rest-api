@@ -1,4 +1,4 @@
-package base
+package api
 
 import (
 	"database/sql"
@@ -9,6 +9,7 @@ import (
 
 	"github.com/go-playground/validator/v10"
 	"tris.sh/go/api/errors"
+	"tris.sh/go/api/routes"
 )
 
 func jsonValidator[A any, R any](
@@ -66,10 +67,15 @@ func errorHandler(endpoint func(http.ResponseWriter, *http.Request) error) http.
 	})
 }
 
-func RegisterRoute[A any, R any](
+func registerRoute[A any, R any](
 	path string,
 	session *sql.DB,
 	endpoint func(*sql.DB, A) (R, error),
 ) {
 	http.Handle(path, errorHandler(jsonValidator(session, endpoint)))
+}
+
+func Init(session *sql.DB) error {
+	registerRoute("/api/create_user", session, routes.CreateUser)
+	return http.ListenAndServe(":8080", nil)
 }

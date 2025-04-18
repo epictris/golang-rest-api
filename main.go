@@ -1,17 +1,16 @@
 package main
 
 import (
-	"net/http"
+	"log"
 
-	"tris.sh/go/api/base"
-	"tris.sh/go/api/routes"
+	"tris.sh/go/api"
 	"tris.sh/go/db"
 )
 
 func main() {
 	database := db.Init()
 	defer database.Close()
-	base.RegisterRoute("/test", database, routes.GetUser)
-	base.RegisterRoute("/api/create_user", database, routes.CreateUser)
-	http.ListenAndServe(":8080", nil)
+	if err := api.Init(database); err != nil {
+		log.Fatal(err)
+	}
 }
