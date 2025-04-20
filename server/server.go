@@ -1,4 +1,4 @@
-package api
+package server
 
 import (
 	"database/sql"
@@ -6,6 +6,8 @@ import (
 	"io"
 	"log"
 	"net/http"
+
+	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 
 	"github.com/go-playground/validator/v10"
 	"tris.sh/go/api/errors"
@@ -49,7 +51,7 @@ func jsonValidator[A any, R any](
 	}
 }
 
-func errorHandler(endpoint func(http.ResponseWriter, *http.Request) error) http.Handler {
+func errorHandler(endpoint func(http.ResponseWriter, *http.Request) error) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if err := endpoint(w, r); err != nil {
 			log.Println(err)
@@ -68,14 +70,21 @@ func errorHandler(endpoint func(http.ResponseWriter, *http.Request) error) http.
 }
 
 func registerRoute[A any, R any](
-	path string,
-	session *sql.DB,
-	endpoint func(*sql.DB, A) (R, error),
+	mux *http.ServeMux,
+	db *sql.DB,
+	pattern string,
+	endpoint func(session *sql.DB, args A) (R, error),
 ) {
-	http.Handle(path, errorHandler(jsonValidator(session, endpoint)))
+	handler := otelhttp.WithRouteTag(pattern, errorHandler(jsonValidator(db, endpoint)))
+	mux.Handle(pattern, handler)
 }
 
-func Init(session *sql.DB) error {
-	registerRoute("/api/create_user", session, routes.CreateUser)
-	return http.ListenAndServe(":8080", nil)
+func NewHTTPHandler(db *sql.DB) http.Handler {
+	mux := http.NewServeMux()
+
+	registerRoute(mux, db, "/api/create_user", routes.CreateUser)
+
+	// add HTTP logging instrumentation for all routes
+	handler := otelhttp.NewHandler(mux, "/")
+	return handler
 }
