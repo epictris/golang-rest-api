@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"errors"
 	"log"
 	"net"
 	"net/http"
@@ -10,8 +9,8 @@ import (
 	"os/signal"
 
 	"tris.sh/go/database"
-	"tris.sh/go/otel"
 	"tris.sh/go/server"
+	"tris.sh/go/telemetry"
 )
 
 func run() (err error) {
@@ -22,14 +21,11 @@ func run() (err error) {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
 	defer stop()
 
-	// initialize opentelemetry logging
-	otelShutdown, err := otel.SetupOTelSDK(ctx)
+	otelShutdown, err := telemetry.OtelInit(ctx)
 	if err != nil {
-		return
+		return err
 	}
-	defer func() {
-		err = errors.Join(err, otelShutdown(context.Background()))
-	}()
+	defer otelShutdown(ctx)
 
 	// start server
 	srv := &http.Server{
@@ -41,7 +37,6 @@ func run() (err error) {
 	go func() {
 		serverError <- srv.ListenAndServe()
 	}()
-	log.Println("Started server on port 8080")
 
 	// wait for server to encounter an error or get cancelled
 	select {

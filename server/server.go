@@ -8,6 +8,7 @@ import (
 	"net/http"
 
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
+	"go.opentelemetry.io/otel/trace"
 
 	"github.com/go-playground/validator/v10"
 	"tris.sh/go/api/errors"
@@ -53,8 +54,12 @@ func jsonValidator[A any, R any](
 
 func errorHandler(endpoint func(http.ResponseWriter, *http.Request) error) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		span := trace.SpanFromContext(r.Context())
 		if err := endpoint(w, r); err != nil {
-			log.Println(err)
+
+			span.RecordError(err, trace.WithStackTrace(true))
+			log.Printf("%v", err)
+
 			var error errors.APIError
 			if re, ok := err.(errors.APIError); ok {
 				error = re
@@ -83,8 +88,9 @@ func NewHTTPHandler(db *sql.DB) http.Handler {
 	mux := http.NewServeMux()
 
 	registerRoute(mux, db, "/api/create_user", routes.CreateUser)
+	registerRoute(mux, db, "/api/get_user", routes.GetUser)
 
-	// add HTTP logging instrumentation for all routes
+	// add otel HTTP logging instrumentation for all routes
 	handler := otelhttp.NewHandler(mux, "/")
 	return handler
 }
