@@ -1,0 +1,13 @@
+syntax = "proto3";
+
+package proto.v1;
+
+option go_package = "github.com/epictris/go/gen/proto/v1;apiv1";
+
+import "proto/v1/get_user.proto";
+import "proto/v1/create_user.proto";
+
+service Service {
+	rpc CreateUser(CreateUserRequest) returns (CreateUserResponse);
+	rpc GetUser(GetUserRequest) returns (GetUserResponse);
+}
