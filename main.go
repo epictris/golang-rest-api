@@ -8,9 +8,9 @@ import (
 	"os"
 	"os/signal"
 
-	"tris.sh/go/database"
-	"tris.sh/go/server"
-	"tris.sh/go/telemetry"
+	"github.com/epictris/go/database"
+	"github.com/epictris/go/server"
+	"github.com/epictris/go/telemetry"
 )
 
 func run() (err error) {
