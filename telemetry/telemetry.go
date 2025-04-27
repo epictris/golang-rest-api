@@ -5,6 +5,7 @@ import (
 	"errors"
 	"log"
 
+	"github.com/epictris/go/environment"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/exporters/otlp/otlplog/otlploghttp"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp"
@@ -13,16 +14,10 @@ import (
 	"go.opentelemetry.io/otel/sdk/resource"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	semconv "go.opentelemetry.io/otel/semconv/v1.21.0"
-	"tris.sh/go/environment"
 )
 
 // bootstraps the OpenTelemetry pipeline.
 func OtelInit(ctx context.Context) (shutdown func(context.Context) error, err error) {
-	if environment.OtelExporterOtlpEndpoint == "" || environment.OtelExporterOtlpHeaders == "" ||
-		environment.OtelExporterOtlpProtocol == "" {
-		log.Println("No OpenTelemetry environment variables found. Skipping OTEL setup.")
-		return
-	}
 
 	var shutdownFuncs []func(context.Context) error
 
@@ -36,6 +31,12 @@ func OtelInit(ctx context.Context) (shutdown func(context.Context) error, err er
 		}
 		shutdownFuncs = nil
 		return err
+	}
+
+	if environment.OtelExporterOtlpEndpoint == "" || environment.OtelExporterOtlpHeaders == "" ||
+		environment.OtelExporterOtlpProtocol == "" {
+		log.Println("No OpenTelemetry environment variables found. Skipping OTEL setup.")
+		return
 	}
 
 	// handleErr calls shutdown for cleanup and makes sure that all errors are returned.
